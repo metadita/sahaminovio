@@ -2,19 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Catur Lawan AI - Vercel</title>
+  <title>Catur Lawan Komputer (AI)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
   <style>
     body { font-family: Arial, sans-serif; background: #f2f2f2; }
     #container { max-width: 500px; margin: 40px auto; background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 0 12px #bbb; }
-    #board { width: 100%; max-width: 400px; margin: 0 auto; }
+    #board { width: 100%; max-width: 400px; min-width: 280px; min-height: 280px; margin: 0 auto; }
     #status { margin-top: 16px; text-align: center; font-size: 18px; }
     .btn { display: block; margin: 18px auto 0; padding: 8px 20px; font-size: 16px; background: #222; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
     .btn:hover { background: #444; }
     h2 { text-align: center; }
     .credit { font-size: 13px; color: #888; text-align: center; margin-top: 28px; }
-    @media (max-width:480px) { #container {padding:7vw;} #board {max-width:98vw;} }
+    @media (max-width:480px) { #container {padding:7vw;} #board {max-width:98vw; min-width:180px; min-height:180px;} }
   </style>
 </head>
 <body>
@@ -40,8 +40,11 @@
 
     function initStockfish() {
       if (stockfish) stockfish.terminate();
-      // Path public/stockfish.js sesuai dengan struktur hosting static (Vercel)
-      stockfish = new Worker('public/stockfish.js');
+      // Panggil stockfish.js di root (bukan public/)
+      stockfish = new Worker('stockfish.js');
+      stockfish.onerror = function(e) {
+        statusEl.textContent = "Gagal load Stockfish: " + e.message;
+      };
     }
     initStockfish();
 
