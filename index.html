@@ -1,14 +1,121 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chess AI Frontend</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <title>Catur Lawan AI - Vercel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+  <style>
+    body { font-family: Arial, sans-serif; background: #f2f2f2; }
+    #container { max-width: 500px; margin: 40px auto; background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 0 12px #bbb; }
+    #board { width: 100%; max-width: 400px; margin: 0 auto; }
+    #status { margin-top: 16px; text-align: center; font-size: 18px; }
+    .btn { display: block; margin: 18px auto 0; padding: 8px 20px; font-size: 16px; background: #222; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
+    .btn:hover { background: #444; }
+    h2 { text-align: center; }
+    .credit { font-size: 13px; color: #888; text-align: center; margin-top: 28px; }
+    @media (max-width:480px) { #container {padding:7vw;} #board {max-width:98vw;} }
+  </style>
 </head>
 <body>
-    <h1>Welcome to the Chess AI Frontend</h1>
-    <script src="stockfish.js"></script>
-    <script src="app.js"></script>
+  <div id="container">
+    <h2>Catur Lawan Komputer (AI)</h2>
+    <div id="board"></div>
+    <div id="status"></div>
+    <button id="resetBtn" class="btn">Reset Permainan</button>
+    <div class="credit">
+      Dibuat dengan <a href="https://github.com/jhlywa/chess.js" target="_blank">chess.js</a>,
+      <a href="https://github.com/oakmac/chessboardjs" target="_blank">chessboard.js</a>,
+      <a href="https://github.com/niklasf/stockfish.js" target="_blank">stockfish.js</a>.
+    </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js"></script>
+  <script src="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+  <script>
+    let board = null;
+    let game = new Chess();
+    const statusEl = document.getElementById('status');
+    const resetBtn = document.getElementById('resetBtn');
+    let stockfish = null;
+
+    function initStockfish() {
+      if (stockfish) stockfish.terminate();
+      // Path public/stockfish.js sesuai dengan struktur hosting static (Vercel)
+      stockfish = new Worker('public/stockfish.js');
+    }
+    initStockfish();
+
+    function makeAIMove() {
+      statusEl.textContent = "Komputer sedang berpikir...";
+      stockfish.postMessage('position fen ' + game.fen());
+      stockfish.postMessage('go depth 12');
+    }
+
+    stockfish.onmessage = function(event) {
+      const line = event.data;
+      if (line.startsWith('bestmove')) {
+        const move = line.split(' ')[1];
+        const result = game.move(move, { sloppy: true });
+        if (result) {
+          board.position(game.fen());
+          updateStatus();
+        }
+      }
+    };
+
+    function onDragStart(source, piece) {
+      if (game.game_over() ||
+          (game.turn() === 'w' && piece.search(/^b/) !== -1) ||
+          (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
+        return false;
+      }
+    }
+
+    function onDrop(source, target) {
+      const move = game.move({
+        from: source,
+        to: target,
+        promotion: 'q'
+      });
+      if (move === null) return 'snapback';
+      updateStatus();
+      if (!game.game_over()) window.setTimeout(makeAIMove, 350);
+    }
+
+    function onSnapEnd() {
+      board.position(game.fen());
+    }
+
+    function updateStatus() {
+      let status = '';
+      let moveColor = game.turn() === 'w' ? 'Putih' : 'Hitam';
+      if (game.in_checkmate()) {
+        status = 'Skakmat! ' + (game.turn() === 'w' ? 'Hitam' : 'Putih') + ' menang!';
+      } else if (game.in_draw()) {
+        status = 'Seri!';
+      } else {
+        status = 'Giliran: ' + moveColor;
+        if (game.in_check()) status += ', sedang skak!';
+      }
+      statusEl.textContent = status;
+    }
+
+    const config = {
+      draggable: true,
+      position: 'start',
+      onDragStart: onDragStart,
+      onDrop: onDrop,
+      onSnapEnd: onSnapEnd
+    };
+    board = Chessboard('board', config);
+    updateStatus();
+
+    resetBtn.onclick = () => {
+      game.reset();
+      board.position('start');
+      initStockfish();
+      updateStatus();
+    };
+  </script>
 </body>
 </html>
